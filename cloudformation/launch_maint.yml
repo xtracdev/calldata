@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Launch an EC2 instance for performing database maintenance work.
+
+Parameters:
+  PublicSubnet:
+    Type: String
+
+  DBMaintSecurityGroup:
+    Type: String
+
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+
+  DBHost:
+    Type: String
+
+  DBUser:
+    Type: String
+
+  DBPassword:
+    Type: String
+
+  DBService:
+    Type: String
+
+  BucketName:
+    Type: String
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t2.micro, t2.small, t2.medium, t2.large, m3.medium, m3.large,
+      m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
+      c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge,
+      c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge,
+      r3.8xlarge, i2.xlarge, i2.2xlarge, i2.4xlarge, i2.8xlarge]
+    ConstraintDescription: Please choose a valid instance type.
+
+Mappings:
+  AWSRegionToAMI:
+    us-east-1:
+      AMIID: ami-eca289fb
+    us-east-2:
+      AMIID: ami-446f3521
+    us-west-1:
+      AMIID: ami-9fadf8ff
+    us-west-2:
+      AMIID: ami-7abc111a
+    eu-west-1:
+      AMIID: ami-a1491ad2
+    eu-central-1:
+      AMIID: ami-54f5303b
+    ap-northeast-1:
+      AMIID: ami-9cd57ffd
+    ap-southeast-1:
+      AMIID: ami-a900a3ca
+    ap-southeast-2:
+      AMIID: ami-5781be34
+
+Resources:
+
+  BucketReaderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: bucket-read-policy
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ['s3:ListBucket','s3:ListObjects','s3:GetObject']
+            Resource: '*'
+
+  BucketReaderProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: 
+      - !Ref BucketReaderRole
+
+
+  MaintHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap [AWSRegionToAMI, !Ref 'AWS::Region', AMIID]
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref BucketReaderProfile
+      SecurityGroupIds: 
+      - !Ref DBMaintSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y docker
+          yum install -y git 
+          service docker start
+          yum install -y aws-cli
+          yum install -y unzip
+          mkdir /opt/schema
+          cd /opt/schema
+          aws s3 cp s3://${BucketName}/schema.zip .
+          unzip schema.zip
+          cd db
+          docker run -v $PWD:/fwmnt xtracdev/flyway:4.0.3 -user=${DBUser} -password=${DBPassword} -url=jdbc:postgresql://${DBHost}:5439/${DBService} -locations=filesystem:/fwmnt/migration migrate
+      Tags:
+        -
+          Key: Name
+          Value: !Sub "db main - ${AWS::StackName}"   
+
+Outputs:
+  DBMaintHostAddress:
+    Value: !GetAtt MaintHost.PublicDnsName
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIpAddress"
