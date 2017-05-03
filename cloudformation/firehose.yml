@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template to create a firehose to pump data into redshift, backed
+  up in an s3 bucket.
+
+Parameters:
+  RedshiftJDBCUrl:
+    Type: String
+  Username:
+    Type: String
+  Password:
+    Type: String
+
+Resources:
+
+  FireshoseBucket:
+    Type: "AWS::S3::Bucket"
+
+  FirehostRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal: 
+            Service: [firehose.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: s3Access
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ['s3:AbortMultipartUpload','s3:GetBucketLocation','s3:GetObject','s3:ListBucket','s3:ListBucketMultipartUploads','s3:PutObject']
+            Resource:
+            - !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket]]
+            - !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket, /*]]
+      - PolicyName: logAccess
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ['logs:PutLogEvents']
+            Resource:
+            - 'arn:aws:logs:*:*:*'
+
+
+  RedshiftDeliveryStream:
+    Type: "AWS::KinesisFirehose::DeliveryStream"
+    Properties:
+      DeliveryStreamName: "call_record_stream"
+      RedshiftDestinationConfiguration:
+        CloudWatchLoggingOptions:
+          Enabled: True
+          LogGroupName: "deliverystream"
+          LogStreamName: "firehostdeliverystream"
+        ClusterJDBCURL: !Ref RedshiftJDBCUrl
+        Password: !Ref Password
+        Username: !Ref Username
+        RoleARN: !GetAtt FirehostRole.Arn
+        S3Configuration:
+          BucketARN: !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket]]
+          BufferingHints:
+            IntervalInSeconds: 60
+            SizeInMBs: 10
+          Prefix: /cr
+          RoleARN: !GetAtt FirehostRole.Arn
+          CompressionFormat: UNCOMPRESSED
+        CopyCommand:
+          DataTableName: callrecord
