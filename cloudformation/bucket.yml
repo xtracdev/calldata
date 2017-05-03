@@ -1,0 +1,18 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template to create the bucket firehose will use for streaming data into redshift.
+
+Resources:
+  FirehoseBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 7
+            Status: Enabled
+
+Outputs:
+  BucketName:
+    Value: !Ref FirehoseBucket
+
+

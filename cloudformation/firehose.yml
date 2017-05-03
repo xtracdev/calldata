@@ -4,6 +4,8 @@ Description: >
   up in an s3 bucket.
 
 Parameters:
+  FirehoseBucketName:
+    Type: String
   RedshiftJDBCUrl:
     Type: String
   Username:
@@ -13,10 +15,9 @@ Parameters:
 
 Resources:
 
-  FireshoseBucket:
-    Type: "AWS::S3::Bucket"
 
-  FirehostRole:
+
+  FirehoseRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -33,8 +34,8 @@ Resources:
           - Effect: Allow
             Action: ['s3:AbortMultipartUpload','s3:GetBucketLocation','s3:GetObject','s3:ListBucket','s3:ListBucketMultipartUploads','s3:PutObject']
             Resource:
-            - !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket]]
-            - !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket, /*]]
+            - !Join ['', ['arn:aws:s3:::', !Ref FirehoseBucketName]]
+            - !Join ['', ['arn:aws:s3:::', !Ref FirehoseBucketName, /*]]
       - PolicyName: logAccess
         PolicyDocument:
           Statement:
@@ -67,14 +68,14 @@ Resources:
         ClusterJDBCURL: !Ref RedshiftJDBCUrl
         Password: !Ref Password
         Username: !Ref Username
-        RoleARN: !GetAtt FirehostRole.Arn
+        RoleARN: !GetAtt FirehoseRole.Arn
         S3Configuration:
-          BucketARN: !Join ['', ['arn:aws:s3:::', !Ref FireshoseBucket]]
+          BucketARN: !Join ['', ['arn:aws:s3:::', !Ref FirehoseBucketName]]
           BufferingHints:
             IntervalInSeconds: 60
             SizeInMBs: 10
           Prefix: '/cr'
-          RoleARN: !GetAtt FirehostRole.Arn
+          RoleARN: !GetAtt FirehoseRole.Arn
           CompressionFormat: UNCOMPRESSED
         CopyCommand:
           DataTableName: callrecord
