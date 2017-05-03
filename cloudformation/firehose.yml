@@ -43,6 +43,17 @@ Resources:
             Resource:
             - 'arn:aws:logs:*:*:*'
 
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [CRGroup, !Ref 'AWS::StackName']]
+      RetentionInDays: 14
+
+  CloudWatchLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref CloudwatchLogsGroup
+      LogStreamName: !Join ['-', [CRStream, !Ref 'AWS::StackName']]
 
   RedshiftDeliveryStream:
     Type: "AWS::KinesisFirehose::DeliveryStream"
@@ -51,8 +62,8 @@ Resources:
       RedshiftDestinationConfiguration:
         CloudWatchLoggingOptions:
           Enabled: True
-          LogGroupName: "deliverystream"
-          LogStreamName: "firehostdeliverystream"
+          LogGroupName: !Ref 'CloudwatchLogsGroup'
+          LogStreamName: !Ref 'CloudWatchLogStream'
         ClusterJDBCURL: !Ref RedshiftJDBCUrl
         Password: !Ref Password
         Username: !Ref Username
@@ -62,7 +73,7 @@ Resources:
           BufferingHints:
             IntervalInSeconds: 60
             SizeInMBs: 10
-          Prefix: /cr
+          Prefix: '/cr'
           RoleARN: !GetAtt FirehostRole.Arn
           CompressionFormat: UNCOMPRESSED
         CopyCommand:
