@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template to create a redshift cluster for storing call data records
+
+Parameters:
+  DatabaseName:
+    Description: The name of the first database to be created when the cluster is
+      created
+    Type: String
+    Default: dev
+    AllowedPattern: "([a-z]|[0-9])+"
+  ClusterType:
+    Description: The type of cluster
+    Type: String
+    Default: single-node
+    AllowedValues:
+    - single-node
+    - multi-node
+  NumberOfNodes:
+    Description: The number of compute nodes in the cluster. For multi-node clusters,
+      the NumberOfNodes parameter must be greater than 1
+    Type: Number
+    Default: '1'
+  NodeType:
+    Description: The type of node to be provisioned
+    Type: String
+    Default: dw1.xlarge
+    AllowedValues:
+    - dw1.xlarge
+    - dw1.8xlarge
+    - dw2.large
+    - dw2.8xlarge
+  MasterUsername:
+    Description: The user name that is associated with the master user account for
+      the cluster that is being created
+    Type: String
+    Default: defaultuser
+    AllowedPattern: "([a-z])([a-z]|[0-9])*"
+  MasterUserPassword:
+    Description: The password that is associated with the master user account for
+      the cluster that is being created.
+    Type: String
+    NoEcho: 'true'
+  PortNumber:
+    Description: The port number on which the cluster accepts incoming connections.
+    Type: Number
+    Default: '5439'
+  PrivateSubnet1:
+    Type: String
+  PrivateSubnet2:
+    Type: String
+  VpcId:
+    Type: String
+
+# See http://docs.aws.amazon.com/firehose/latest/dev/controlling-access.html#using-iam-rs
+# for info on firehose ingress
+
+Mappings:
+  AWSRegionToFirehoseCIDR:
+    us-east-1:
+      FirehoseCIDR: 52.70.63.192/27
+    eu-west-1:
+      FirehoseCIDR: 52.89.255.224/27
+    us-west-1:
+      FirehoseCIDR: 52.19.239.192/27
+
+
+Conditions:
+  IsMultiNodeCluster:
+    Fn::Equals:
+    - Ref: ClusterType
+    - multi-node
+
+Resources:
+  RedshiftCluster:
+    Type: AWS::Redshift::Cluster
+    Properties:
+      ClusterType:
+        Ref: ClusterType
+      NumberOfNodes:
+        Fn::If:
+        - IsMultiNodeCluster
+        - Ref: NumberOfNodes
+        - Ref: AWS::NoValue
+      NodeType:
+        Ref: NodeType
+      DBName:
+        Ref: DatabaseName
+      MasterUsername:
+        Ref: MasterUsername
+      MasterUserPassword:
+        Ref: MasterUserPassword
+      VpcSecurityGroupIds:
+      - Ref: VPCIngressSecurityGroup
+      - Ref: FirehoseIngressSecurityGroup
+      ClusterSubnetGroupName:
+        Ref: RedshiftClusterSubnetGroup
+      PubliclyAccessible: 'true'
+      Port:
+        Ref: PortNumber
+ 
+  RedshiftClusterSubnetGroup:
+    Type: AWS::Redshift::ClusterSubnetGroup
+    Properties:
+      Description: Cluster subnet group
+      SubnetIds:
+      - Ref: PrivateSubnet1
+      - Ref: PrivateSubnet2
+
+  
+  VPCIngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: VPC Ingress
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        IpProtocol: tcp
+        FromPort: 5439
+        ToPort: 5439
+        CidrIp: 10.0.0.0/24
+
+  FirehoseIngressSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Firehose Ingress
+        VpcId: !Ref VpcId
+        SecurityGroupIngress:
+          IpProtocol: tcp
+          FromPort: 5439
+          ToPort: 5439
+          CidrIp:
+            !FindInMap [AWSRegionToFirehoseCIDR, !Ref 'AWS::Region', FirehoseCIDR]
