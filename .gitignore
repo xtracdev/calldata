@@ -1,3 +1,5 @@
 setenv-eu-west-1
 .ipynb_checkpoints
 schema.zip
+lambda/lambda
+lambda.zip
