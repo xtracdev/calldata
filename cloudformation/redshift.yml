@@ -59,9 +59,9 @@ Mappings:
   AWSRegionToFirehoseCIDR:
     us-east-1:
       FirehoseCIDR: 52.70.63.192/27
-    eu-west-1:
-      FirehoseCIDR: 52.89.255.224/27
     us-west-1:
+      FirehoseCIDR: 52.89.255.224/27
+    eu-west-1:
       FirehoseCIDR: 52.19.239.192/27
 
 

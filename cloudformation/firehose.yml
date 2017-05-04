@@ -44,27 +44,33 @@ Resources:
             Resource:
             - 'arn:aws:logs:*:*:*'
 
-  CloudwatchLogsGroup:
+  FirehoseLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Join ['-', [CRGroup, !Ref 'AWS::StackName']]
       RetentionInDays: 14
 
-  CloudWatchLogStream:
+  CallRecordLogStream:
     Type: AWS::Logs::LogStream
     Properties:
-      LogGroupName: !Ref CloudwatchLogsGroup
+      LogGroupName: !Ref FirehoseLogsGroup
       LogStreamName: !Join ['-', [CRStream, !Ref 'AWS::StackName']]
 
-  RedshiftDeliveryStream:
+  SvcCallLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref FirehoseLogsGroup
+      LogStreamName: !Join ['-', [SCStream, !Ref 'AWS::StackName']]
+
+  CallRecordDeliveryStream:
     Type: "AWS::KinesisFirehose::DeliveryStream"
     Properties:
-      DeliveryStreamName: "call_record_stream"
+      DeliveryStreamName: !Join ['-', [!Ref 'AWS::StackName', callrec-stream]]
       RedshiftDestinationConfiguration:
         CloudWatchLoggingOptions:
           Enabled: True
-          LogGroupName: !Ref 'CloudwatchLogsGroup'
-          LogStreamName: !Ref 'CloudWatchLogStream'
+          LogGroupName: !Ref 'FirehoseLogsGroup'
+          LogStreamName: !Ref 'CallRecordLogStream'
         ClusterJDBCURL: !Ref RedshiftJDBCUrl
         Password: !Ref Password
         Username: !Ref Username
@@ -79,3 +85,35 @@ Resources:
           CompressionFormat: UNCOMPRESSED
         CopyCommand:
           DataTableName: callrecord
+
+  SvcCallDeliveryStream:
+      Type: "AWS::KinesisFirehose::DeliveryStream"
+      Properties:
+        DeliveryStreamName: !Join ['-', [!Ref 'AWS::StackName', svccall-stream]]
+        RedshiftDestinationConfiguration:
+          CloudWatchLoggingOptions:
+            Enabled: True
+            LogGroupName: !Ref 'FirehoseLogsGroup'
+            LogStreamName: !Ref 'SvcCallLogStream'
+          ClusterJDBCURL: !Ref RedshiftJDBCUrl
+          Password: !Ref Password
+          Username: !Ref Username
+          RoleARN: !GetAtt FirehoseRole.Arn
+          S3Configuration:
+            BucketARN: !Join ['', ['arn:aws:s3:::', !Ref FirehoseBucketName]]
+            BufferingHints:
+              IntervalInSeconds: 60
+              SizeInMBs: 10
+            Prefix: '/sc'
+            RoleARN: !GetAtt FirehoseRole.Arn
+            CompressionFormat: UNCOMPRESSED
+          CopyCommand:
+            DataTableName: svccall
+
+
+Outputs:
+  CallRecordDeliveryStream:
+    Value: !Ref CallRecordDeliveryStream
+
+  SvcCallDeliveryStream:
+    Value: !Ref SvcCallDeliveryStream
