@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Create a lambda function for parsing sumo logs for timing data
+
+Parameters:
+
+  CallRecordStreamName:
+    Type: String
+
+  SvcCallStreamName:
+    Type: String
+
+  CodeBucketName:
+    Type: String
+
+  CodeFileName:
+    Type: String
+
+  SumoSourceBucketName:
+    Type: String
+
+Resources:
+
+  SumoReader:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Environment:
+        Variables:
+            CALL_RECORD_STREAM_NAME: !Ref CallRecordStreamName
+            SVC_CALL_STREAM_NAME: !Ref SvcCallStreamName
+      Handler: "index.handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref CodeBucketName
+        S3Key: !Ref CodeFileName
+      Runtime: "nodejs4.3"
+      Timeout: "25"
+
+  LambdaInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+        FunctionName:
+            Fn::GetAtt:
+                - "SumoReader"
+                - "Arn"
+        Action: "lambda:InvokeFunction"
+        Principal: s3.amazonaws.com
+        SourceArn: !Join ['', ['arn:aws:s3:::', !Ref SumoSourceBucketName]]
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+      - PolicyName: s3access
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:GetObject
+            Resource:
+            - arn:aws:s3:::*
+      - PolicyName: logsAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - arn:aws:logs:*:*:*
+      - PolicyName: firehoseAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - firehose:PutRecord
+            Resource:
+            - '*'
+
+Outputs:
+  SumoReaderLambdaArn:
+    Value: !GetAtt SumoReader.Arn

@@ -17,6 +17,16 @@ import (
 	"strings"
 )
 
+const (
+	callRecordStreamNameEnv = "CALL_RECORD_STREAM_NAME"
+	svcCallStreamNameEnv = "SVC_CALL_STREAM_NAME"
+)
+
+var (
+	callRecordStreamName string
+	svcCallStreamName string
+)
+
 func putRecord(firehoseSvc *firehose.Firehose, streamName, record string) {
 	params := &firehose.PutRecordInput{
 		DeliveryStreamName: aws.String(streamName),
@@ -33,11 +43,11 @@ func putRecord(firehoseSvc *firehose.Firehose, streamName, record string) {
 }
 
 func processCallRecord(firehoseSvc *firehose.Firehose, callRecord string) {
-	putRecord(firehoseSvc, "call-record-stream", callRecord)
+	putRecord(firehoseSvc, callRecordStreamName, callRecord)
 }
 
 func processSvcCallRecord(firehoseSvc *firehose.Firehose, svcCall string) {
-	putRecord(firehoseSvc, "svc-call-stream", svcCall)
+	putRecord(firehoseSvc, svcCallStreamName, svcCall)
 }
 
 func processBody(fireHoseSvc *firehose.Firehose, body io.Reader) error {
@@ -97,6 +107,18 @@ func processBody(fireHoseSvc *firehose.Firehose, body io.Reader) error {
 }
 
 func main() {
+
+	callRecordStreamName = os.Getenv(callRecordStreamNameEnv)
+	if callRecordStreamName == "" {
+		log.Fatalf("No value in the environment for %s", callRecordStreamNameEnv)
+	}
+
+	svcCallStreamName = os.Getenv(svcCallStreamNameEnv)
+	if svcCallStreamName == "" {
+		log.Fatalf("No value in the environment for %s", svcCallStreamNameEnv)
+	}
+
+
 	fmt.Printf("Go binary called with args %v\n", os.Args)
 	buf := bytes.NewBuffer([]byte(os.Args[1]))
 	js, err := simplejson.NewFromReader(buf)
