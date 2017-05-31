@@ -16,6 +16,8 @@ an iPython notebook that uses the templates to build the pipeline
 stages. The schema is installed in Redshift using flyway - the 
 flyway directory contains the config, migrations, etc.
 
+<img src="./call-data-pipeline.png" width="100%" height="100%"/>
+
 ## Contributing
 
 To contribute, you must certify you agree with the [Developer Certificate of Origin](http://developercertificate.org/)
