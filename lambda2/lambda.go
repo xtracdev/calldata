@@ -25,9 +25,11 @@ var (
 )
 
 
-func processCallRecord(s3svc *s3.S3, key, bucket string, cr string) {
+func processCallRecord(s3svc *s3.S3, key, bucket string, lineBuffer *bytes.Buffer) {
+	records := string(lineBuffer.Bytes())
+
 	input := &s3.PutObjectInput{
-		Body: aws.ReadSeekCloser(strings.NewReader(cr)),
+		Body: aws.ReadSeekCloser(strings.NewReader(records)),
 		Bucket:aws.String(bucket),
 		Key:aws.String(key),
 	}
@@ -57,6 +59,8 @@ func processBody(s3svc *s3.S3, key, bucket string, body io.Reader) error {
 		log.Fatal(err)
 	}
 
+	var lineBuffer bytes.Buffer
+	emptyBuffer := true
 	for sr.Scan() {
 		line := sr.Text()
 		if strings.Contains(line, "{") {
@@ -78,9 +82,22 @@ func processBody(s3svc *s3.S3, key, bucket string, body io.Reader) error {
 				continue
 			}
 
+			if emptyBuffer {
+				emptyBuffer = false
+				fmt.Fprintf(&lineBuffer, "%s\n",at.Header())
+			}
+
 			fmt.Printf("call record:\n%s\n", cr)
-			processCallRecord(s3svc, key, bucket, cr)
+			fmt.Fprintf(&lineBuffer, "%s\n", cr)
+
 		}
+	}
+
+	if lineBuffer.Len() > 0 {
+		fmt.Println("Writing bytes to s3")
+		processCallRecord(s3svc, key, bucket, &lineBuffer)
+	} else {
+		fmt.Println("No bytes to write")
 	}
 
 	if err := sr.Err(); err != nil {

@@ -75,6 +75,10 @@ func (at *APITimingRec) IsCallRecord() (bool, error) {
 	return true,nil
 }
 
+func (at *APITimingRec) Header() string {
+	return "Timestamp|TxnId|Error|SourceHost|SourceCategory|Name|Subject|Aud|Duration"
+}
+
 func (at *APITimingRec) CallRecord() (string, error) {
 	var callRecord endToEndTimer
 
