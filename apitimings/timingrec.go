@@ -56,6 +56,29 @@ func formatPGTime(t time.Time) string {
 		t.Hour(), t.Minute(), t.Second())
 }
 
+func (at *APITimingRec) IsCallRecord() (bool, error) {
+	var callRecord endToEndTimer
+
+	err := json.Unmarshal([]byte(at.Message), &callRecord)
+	if err != nil {
+		return false, err
+	}
+
+	if callRecord.TxnId == "" {
+		return false, nil
+	}
+
+	if callRecord.Name == "" {
+		return false, nil
+	}
+
+	return true,nil
+}
+
+func (at *APITimingRec) Header() string {
+	return "Timestamp|TxnId|Error|SourceHost|SourceCategory|Name|Subject|Aud|Duration"
+}
+
 func (at *APITimingRec) CallRecord() (string, error) {
 	var callRecord endToEndTimer
 
