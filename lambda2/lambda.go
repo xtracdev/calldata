@@ -164,7 +164,12 @@ func main() {
 
 		defer resp.Body.Close()
 
-		err = processBody(s3svc, key.MustString(), callRecordBucketName, resp.Body)
+		s3Key := key.MustString()
+		if !strings.HasSuffix(s3Key,".txt") {
+			s3Key += ".txt"
+		}
+
+		err = processBody(s3svc, s3Key, callRecordBucketName, resp.Body)
 		if err != nil {
 			fmt.Printf("Error processing body: %s\n", err.Error())
 		}
