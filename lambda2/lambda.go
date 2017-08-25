@@ -60,7 +60,7 @@ func processBody(s3svc *s3.S3, key, bucket string, body io.Reader) error {
 	}
 
 	var lineBuffer bytes.Buffer
-	emptyBuffer := true
+	count := 0
 	for sr.Scan() {
 		line := sr.Text()
 		if strings.Contains(line, "{") {
@@ -82,19 +82,20 @@ func processBody(s3svc *s3.S3, key, bucket string, body io.Reader) error {
 				continue
 			}
 
-			if emptyBuffer {
-				emptyBuffer = false
+			if count == 0 {
 				fmt.Fprintf(&lineBuffer, "%s\n",at.Header())
 			}
 
 			fmt.Printf("call record:\n%s\n", cr)
+
+			count += 1
 			fmt.Fprintf(&lineBuffer, "%s\n", cr)
 
 		}
 	}
 
 	if lineBuffer.Len() > 0 {
-		fmt.Println("Writing bytes to s3")
+		fmt.Printf("Writing %d records to s3\n", count)
 		processCallRecord(s3svc, key, bucket, &lineBuffer)
 	} else {
 		fmt.Println("No bytes to write")

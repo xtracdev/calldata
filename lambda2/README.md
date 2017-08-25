@@ -58,3 +58,72 @@ For testing on the command line locally:
 Dependency:
 
 go get github.com/bitly/go-simplejson
+
+
+Notes to my future self
+
+To run without errors for sumo dump configure the function with 256MB  and 30s timeout.
+
+Need policies with s3 access for reading and writing, and the lambda
+stuff as well, for instance:
+
+<pre>
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": "logs:CreateLogGroup",
+            "Resource": "arn:aws:logs:us-west-2:<account no>:*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:us-west-2:<account no>:log-group:/aws/lambda/myTestFn:*"
+            ]
+        }
+    ]
+}
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1503590552000",
+            "Effect": "Allow",
+            "Action": [
+                "s3:*"
+            ],
+            "Resource": [
+                "arn:aws:s3:::xtds-lambda*"
+            ]
+        }
+    ]
+}
+</pre>
+
+And for a dead letter queue access:
+
+<pre>
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Stmt1503654687000",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:SendMessage",
+                "sqs:SendMessageBatch"
+            ],
+            "Resource": [
+                "arn:aws:sqs:us-west-2:930295567417:myTestFnDLQ"
+            ]
+        }
+    ]
+}
+</pre>
+
