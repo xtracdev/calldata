@@ -127,3 +127,52 @@ And for a dead letter queue access:
 }
 </pre>
 
+
+A crawler is used to populate a table that Athena can query:
+
+<pre>
+aws glue get-crawler --name call-data-crawler
+{
+    "Crawler": {
+        "CrawlElapsedTime": 195000, 
+        "Name": "call-data-crawler", 
+        "Schedule": {
+            "State": "SCHEDULED", 
+            "ScheduleExpression": "cron(0/5 * * * ? *)"
+        }, 
+        "CreationTime": 1503649256.0, 
+        "LastUpdated": 1503651037.0, 
+        "Targets": {
+            "JdbcTargets": [], 
+            "S3Targets": [
+                {
+                    "Path": "s3://xtds-lambda-sink/", 
+                    "Exclusions": []
+                }
+            ]
+        }, 
+        "LastCrawl": {
+            "Status": "SUCCEEDED", 
+            "LogStream": "call-data-crawler", 
+            "MessagePrefix": "53e0a4d7-ee6f-4c6f-b6df-80cb8cba4c92", 
+            "StartTime": 1503656446.0, 
+            "LogGroup": "/aws-glue/crawlers"
+        }, 
+        "State": "STOPPING", 
+        "Version": 2, 
+        "Role": "arn:aws:iam::<account no>:role/s3-glue-crawler-role", 
+        "DatabaseName": "apicalls", 
+        "SchemaChangePolicy": {
+            "DeleteBehavior": "DEPRECATE_IN_DATABASE", 
+            "UpdateBehavior": "UPDATE_IN_DATABASE"
+        }, 
+        "Classifiers": []
+    }
+}
+</pre>
+
+
+Policy in the crawler role: AWSS3FullAccess and AWSGlueServiceRole policies are attached
+to the rol
+
+
